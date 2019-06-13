@@ -1,67 +1,120 @@
-# PyTorch bindings for Warp-ctc
+# Warp-CTC-PyTorch
 
-[![Build Status](https://travis-ci.org/SeanNaren/warp-ctc.svg?branch=pytorch_bindings)](https://travis-ci.org/SeanNaren/warp-ctc)
+An extension of Baidu [warp-ctc](https://github.com/baidu-research/warp-ctc) for [PyTorch](https://github.com/pytorch/pytorch).
 
-This is an extension onto the original repo found [here](https://github.com/baidu-research/warp-ctc).
+## Introduction
+
+This is a modified version of [SeanNaren/warp-ctc](https://github.com/SeanNaren/warp-ctc). I just modify the code to the new CPP Extensions API style of PyTorch.
+
+When I use the source [SeanNaren/warp-ctc](https://github.com/SeanNaren/warp-ctc), some problems bother me. So I modify the source codes.
+
+## Requirements
+
+- pytorch>=0.4.0
+- cmake>=2.8
+
+Note: test environment: pytorch 0.4.1 & 1.0.0.dev20181106
 
 ## Installation
 
-Install [PyTorch](https://github.com/pytorch/pytorch#installation).
-
-`WARP_CTC_PATH` should be set to the location of a built WarpCTC
-(i.e. `libwarpctc.so`).  This defaults to `../build`, so from within a
-new warp-ctc clone you could build WarpCTC like this:
-
 ```bash
-git clone https://github.com/SeanNaren/warp-ctc.git
-cd warp-ctc
-mkdir build; cd build
-cmake ..
-make
+git clone --recursive https://github.com/StickCui/warp-ctc-pytorch.git
 ```
 
-Now install the bindings:
-```
-cd pytorch_binding
-python setup.py install
+1. Install to your PYTHONPATH
+
+    Run the script as follow (Using Python3 as default):
+    ```bash
+    cd warp-ctc-pytorch
+    sh make.sh install
+    ```
+    It will install the extension module in your user pythonpath (e.g. ~/.local/lib/python3.5/site_package)
+
+    You can also install it by yourself like:
+    ```bash
+    cd warp-ctc-pytorch
+    sh make.sh core
+    sudo python3 setup.py install
+    ```
+    or
+    ```bash
+    cd warp-ctc-pytorch/warpctc/core
+    mkdir build
+    cd build
+    cmake ..
+    make
+    cd ../../../
+    sudo python3 setup.py install
+    ```
+2. Build inplace to embed to your project
+
+    Run the script as follow (Using Python3 as default):
+    ```bash
+    cd warp-ctc-pytorch
+    sh make.sh build
+    ```
+    or
+    ```bash
+    cd warp-ctc-pytorch
+    sh make.sh core
+    python3 setup.py build_ext --inplace
+    ```
+
+## How to Use
+
+For initialization, there two parameters:
+```Python
+CTCLoss(self, size_average=True, reduces=True):
+"""
+Args:
+    size_average (bool, optional): By default,
+            the losses are averaged by minibatch.
+            If the field :attr:`size_average`
+            is set to ``False``, the losses are instead
+            summed for each minibatch. Ignored
+            when reduces is ``False``. Default: ``True``
+    reduce (bool, optional): By default, the losses are averaged
+            or summed over observations for each minibatch
+            depending on :attr:`size_average`. When :attr:`reduce`
+            is ``False``, returns a loss per batch element instead
+            and ignores :attr:`size_average`. Default: ``True``
+"""
 ```
 
-If you try the above and get a dlopen error on OSX with anaconda3 (as recommended by pytorch):
-```
-cd ../pytorch_binding
-python setup.py install
-cd ../build
-cp libwarpctc.dylib /Users/$WHOAMI/anaconda3/lib
-```
-This will resolve the library not loaded error. This can be easily modified to work with other python installs if needed.
-
-Example to use the bindings below.
-
-```python
-    import torch
-    from torch.autograd import Variable
-    from warpctc_pytorch import CTCLoss
-    ctc_loss = CTCLoss()
-    # expected shape of seqLength x batchSize x alphabet_size
-    probs = torch.FloatTensor([[[0.1, 0.6, 0.1, 0.1, 0.1], [0.1, 0.1, 0.6, 0.1, 0.1]]]).transpose(0, 1).contiguous()
-    labels = Variable(torch.IntTensor([1, 2]))
-    label_sizes = Variable(torch.IntTensor([2]))
-    probs_sizes = Variable(torch.IntTensor([2]))
-    probs = Variable(probs, requires_grad=True) # tells autograd to compute gradients for probs
-    cost = ctc_loss(probs, labels, probs_sizes, label_sizes)
-    cost.backward()
+As for forward:
+```Python
+forward(self, preds, labels, preds_lens, label_lens)
+"""
+Shape:
+        preds: :math:`(seqLength, batch, outputDim)`. Tensor contains output from network
+        labels: :math:`(X,)`. Tensor contains all the targets of the batch in one sequence
+        preds_lens: :math:`(batch,)`. Tensor contains size of each output sequence from the network
+        label_lens: :math:`(batch,)`. Tensor contains label length of each example
+"""
 ```
 
-## Documentation
+Similar with the [Document](https://github.com/SeanNaren/warp-ctc#documentation).
 
-```
-CTCLoss(size_average=False, length_average=False)
-    # size_average (bool): normalize the loss by the batch size (default: False)
-    # length_average (bool): normalize the loss by the total number of frames in the batch. If True, supersedes size_average (default: False)
+Example:
+```Python
+import torch
+import numpy as np
+from warpctc import CTCLoss
 
-forward(acts, labels, act_lens, label_lens)
-    # acts: Tensor of (seqLength x batch x outputDim) containing output activations from network (before softmax)
-    # labels: 1 dimensional Tensor containing all the targets of the batch in one large sequence
-    # act_lens: Tensor of size (batch) containing size of each output sequence from the network
-    # label_lens: Tensor of (batch) containing label length of each example
+costfunc = CTCLoss()
+
+preds = torch.Tensor(100, 128, 37)
+label_length = torch.from_numpy(np.random.randint(20, 80, (128,), dtype=np.int32))
+s = label_length.sum()
+s = int(s)
+labels = torch.from_numpy(np.random.randint(1, 36, (s,), dtype=np.int32))
+
+loss = costfunc(preds, labels, preds_size, label_length)
+loss.backward()
 ```
+
+## References
+
+[1] SeanNaren. https://github.com/SeanNaren/warp-ctc. 2018/11/10
+
+[2] baidu-research. https://github.com/baidu-research/warp-ctc. 2018/11/10
