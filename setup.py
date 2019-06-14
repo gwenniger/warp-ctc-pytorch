@@ -11,13 +11,13 @@ from torch.utils.cpp_extension import CUDAExtension
 
 def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
-    warp_ctc_path = 'warpctc/core/build'
+    warp_ctc_path = 'warpctc_pytorch/core/build'
 
-    main_file = ['warpctc/src/version.cpp']
-    cpu_file = ['warpctc/src/cpu/cpu_ctc.cpp']
-    cuda_file = ['warpctc/src/cuda/gpu_ctc.cu']
+    main_file = ['warpctc_pytorch/src/version.cpp']
+    cpu_file = ['warpctc_pytorch/src/cpu/cpu_ctc.cpp']
+    cuda_file = ['warpctc_pytorch/src/cuda/gpu_ctc.cu']
 
-    include_dirs = ['warpctc/core/include', 'warpctc/src']
+    include_dirs = ['warpctc_pytorch/core/include', 'warpctc_pytorch/src', 'include']
     extra_compile_args = {"cxx": ['-std=c++11', '-fPIC']}
     define_macros = []
     source_files = main_file + cpu_file
